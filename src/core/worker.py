@@ -1,7 +1,7 @@
 import logging
 import numpy as np
 from typing import Dict, Any, List
-from PyQt5.QtCore import QThread, pyqtSignal
+from PySide6.QtCore import QThread, Signal
 
 from core.types import TemperatureType, InterpolationMethod, AnalysisResult
 from core.excel_processor import ExcelProcessor
@@ -11,10 +11,10 @@ from core.interpolation import InterpolationEngine
 class AnalysisWorker(QThread):
     """Worker thread for performing analysis without blocking the GUI."""
     
-    progress_updated = pyqtSignal(int)
-    status_updated = pyqtSignal(str)
-    analysis_completed = pyqtSignal(list)
-    error_occurred = pyqtSignal(str)
+    progress_updated = Signal(int)
+    status_updated = Signal(str)
+    analysis_completed = Signal(list)
+    error_occurred = Signal(str)
     
     def __init__(self, config: Dict[str, Any]):
         super().__init__()

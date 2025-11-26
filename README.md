@@ -16,7 +16,7 @@ Useful for cryogenic risk assessments where you want to find the maximum downwin
 1. Clone this repository
 2. Install the required dependencies:
 ```bash
-pip install numpy pandas scipy openpyxl PyQt5
+pip install numpy pandas scipy openpyxl PySide6
 ```
 
 ## Usage

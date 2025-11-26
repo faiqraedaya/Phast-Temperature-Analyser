@@ -2,14 +2,14 @@ import os
 import logging
 import pandas as pd
 from typing import List
-from PyQt5.QtWidgets import (
+from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QGridLayout, QLabel, QLineEdit, QPushButton, QComboBox, QCheckBox,
     QProgressBar, QTextEdit, QFileDialog, QMessageBox, QGroupBox,
     QSpinBox, QDoubleSpinBox, QTabWidget
 )
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QFont
 
 from core.types import TemperatureType, InterpolationMethod, AnalysisResult
 from core.worker import AnalysisWorker
@@ -115,16 +115,6 @@ class PHASTAnalyzerGUI(QMainWindow):
         
         layout.addWidget(params_group)
         
-        # Options group
-        options_group = QGroupBox("Options")
-        options_layout = QVBoxLayout(options_group)
-        
-        self.verbose_checkbox = QCheckBox("Verbose Mode")
-        self.verbose_checkbox.setChecked(True)
-        options_layout.addWidget(self.verbose_checkbox)
-        
-        layout.addWidget(options_group)
-        
         # Run button
         self.run_button = QPushButton("Run Analysis")
         self.run_button.clicked.connect(self.run_analysis)
@@ -137,19 +127,21 @@ class PHASTAnalyzerGUI(QMainWindow):
         """Create the settings tab."""
         tab = QWidget()
         layout = QVBoxLayout(tab)
+
+        settings_group = QGroupBox("General Settings")
+        settings_layout = QVBoxLayout(settings_group)
         
-        # Export settings
-        export_group = QGroupBox("Export Settings")
-        export_layout = QGridLayout(export_group)
+        self.verbose_checkbox = QCheckBox("Verbose Mode")
+        self.verbose_checkbox.setChecked(True)
+        settings_layout.addWidget(self.verbose_checkbox)
         
-        export_layout.addWidget(QLabel("Decimal Places:"), 0, 0)
+        settings_layout.addWidget(QLabel("Decimal Places:"))
         self.decimal_places_spin = QSpinBox()
         self.decimal_places_spin.setRange(0, 10)
         self.decimal_places_spin.setValue(2)
-        export_layout.addWidget(self.decimal_places_spin, 0, 1)
+        settings_layout.addWidget(self.decimal_places_spin)
         
-        layout.addWidget(export_group)
-        
+        layout.addWidget(settings_group)
         # Add stretch to push everything to top
         layout.addStretch()
         
@@ -229,6 +221,7 @@ class PHASTAnalyzerGUI(QMainWindow):
                 f"Results exported to: {self.output_file_edit.text()}\n"
                 f"Total records: {len(results)}"
             )
+            self.log_output.append(f"[INFO] Analysis completed successfully. Results exported to: {self.output_file_edit.text()}")
             
         except Exception as e:
             self.on_error(f"Export failed: {str(e)}")
