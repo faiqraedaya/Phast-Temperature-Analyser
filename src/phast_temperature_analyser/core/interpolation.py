@@ -3,7 +3,7 @@ from scipy import interpolate
 import logging
 from typing import Optional
 
-from core.types import InterpolationMethod
+from phast_temperature_analyser.core.types import InterpolationMethod
 
 
 class InterpolationEngine:

@@ -11,8 +11,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 
-from core.types import TemperatureType, InterpolationMethod, AnalysisResult
-from core.worker import AnalysisWorker
+from phast_temperature_analyser.core.types import TemperatureType, InterpolationMethod, AnalysisResult
+from phast_temperature_analyser.core.worker import AnalysisWorker
 
 
 class PHASTAnalyzerGUI(QMainWindow):

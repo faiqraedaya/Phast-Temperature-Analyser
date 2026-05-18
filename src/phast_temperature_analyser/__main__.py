@@ -1,16 +1,16 @@
 import sys
 from PySide6.QtWidgets import QApplication
 
-from gui.main_window import PHASTAnalyzerGUI
+from phast_temperature_analyser.gui.main_window import PHASTAnalyzerGUI
+
 
 def main():
-    """Main application entry point."""
     app = QApplication(sys.argv)
-    app.setStyle('Fusion')  # Modern look
-    
+    app.setStyle('Fusion')
+
     window = PHASTAnalyzerGUI()
     window.show()
-    
+
     sys.exit(app.exec())
 
 

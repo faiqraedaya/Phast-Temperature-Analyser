@@ -3,9 +3,9 @@ import numpy as np
 from typing import Dict, Any, List
 from PySide6.QtCore import QThread, Signal
 
-from core.types import TemperatureType, InterpolationMethod, AnalysisResult
-from core.excel_processor import ExcelProcessor
-from core.interpolation import InterpolationEngine
+from phast_temperature_analyser.core.types import TemperatureType, InterpolationMethod, AnalysisResult
+from phast_temperature_analyser.core.excel_processor import ExcelProcessor
+from phast_temperature_analyser.core.interpolation import InterpolationEngine
 
 
 class AnalysisWorker(QThread):

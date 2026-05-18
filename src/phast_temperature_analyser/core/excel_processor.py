@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 import openpyxl
 
-from core.types import TemperatureType
+from phast_temperature_analyser.core.types import TemperatureType
 
 
 class ExcelProcessor:
