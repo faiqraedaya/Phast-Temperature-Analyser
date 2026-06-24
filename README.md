@@ -1,36 +1,38 @@
-# PHAST Temperature Dispersion Analyser
+# Phast Temperature Dispersion Analyser
 
-A tool for analysing temperature data from PHAST dispersion reports.
-Useful for cryogenic risk assessments where you want to find the maximum downwind distance to a temperature of interest.
+A tool for analysing temperature and concentration data from Phast dispersion reports.
+Useful for cryogenic and toxic/flammable risk assessments where you want to find the
+maximum downwind distance to a temperature of interest, along with the centreline
+concentration at that point.
 
 ## Features
 
 - Process multiple Excel files containing PHAST dispersion data
 - Support for both vapour and liquid temperature analysis
+- Find the maximum downwind distance to a temperature of interest (°C)
+- Derive the centreline concentration (ppm) at that temperature of interest
 - Multiple interpolation methods (Linear, Cubic Spline, Quadratic, Nearest Neighbor)
 - Export results to Excel with customizable decimal places
-- Progress tracking and logging 
 
 ## Installation
 
-1. Clone this repository
-2. Install the required dependencies:
 ```bash
-pip install numpy pandas scipy openpyxl PySide6
+git clone https://github.com/faiqraedaya/Phast-Temperature-Analyser
+cd Phast-Temperature-Analyser
+uv sync
 ```
 
-## Usage
+## Quick start
 
-1. Run the application:
+1. Run the application 
 ```bash
-python main.py
+uv run main.py
 ```
-
 2. Load a folder containing Phast dispersion reports (Excel files).
 3. Define an output Excel file.
-4. Set the temperature type (Vapour or Liquid), your temperature of interest and interpolation method.
+4. Set the temperature type (Vapour or Liquid), your temperature of interest interpolation method.
 5. Run Analysis.
 
 ## License
 
-This project is open source and available under the MIT License. 
+[MIT](LICENSE)

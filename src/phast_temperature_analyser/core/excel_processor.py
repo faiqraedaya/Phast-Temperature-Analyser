@@ -69,6 +69,7 @@ class ExcelProcessor:
                             'scenario': scenario,
                             'weather': weather,
                             'distances': data['distances'],
+                            'concentrations': data['concentrations'],
                             'temperatures': data['temperatures']
                         })
         
@@ -87,10 +88,11 @@ class ExcelProcessor:
                 else "C/Line liquid temperature [degC]"
             )
             temp_col = headers.index(temp_header)
-            
+            concentration_col = headers.index("C/Line concentration [ppm]")
+
             # Extract data
-            distances, temperatures = [], []
-            
+            distances, temperatures, concentrations = [], [], []
+
             for row_num in range(start_row + 3, ws.max_row + 1):
                 row_data = [cell.value for cell in ws[row_num]]
                 
@@ -99,18 +101,21 @@ class ExcelProcessor:
                 
                 distance = row_data[distance_col]
                 temperature = row_data[temp_col]
+                concentration = row_data[concentration_col]
                 
-                if distance is not None and temperature is not None:
+                if distance is not None and temperature is not None and concentration is not None:
                     try:
                         distances.append(float(distance))
+                        concentrations.append(float(concentration))
                         temperatures.append(float(temperature))
                     except (ValueError, TypeError):
                         continue
             
             return {
                 'distances': distances,
-                'temperatures': temperatures
-            } if distances and temperatures else None
+                'temperatures': temperatures,
+                'concentrations': concentrations
+            } if distances and temperatures and concentrations else None
             
         except (ValueError, IndexError) as e:
             self.logger.error(f"Error extracting dispersion data: {e}")

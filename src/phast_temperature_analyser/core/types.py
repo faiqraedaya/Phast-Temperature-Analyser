@@ -1,5 +1,6 @@
 from enum import Enum
 from dataclasses import dataclass
+from typing import Optional
 
 
 class InterpolationMethod(Enum):
@@ -19,6 +20,8 @@ class AnalysisResult:
     subsection: str
     scenario: str
     weather: str
-    downwind_distance: float
     interpolation_method: str
-    temperature_of_interest: float 
+    temperature_of_interest: float
+    # Both derived at the temperature of interest
+    downwind_distance: Optional[float]
+    concentration: Optional[float] 

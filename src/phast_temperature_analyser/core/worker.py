@@ -40,29 +40,43 @@ class AnalysisWorker(QThread):
             results = []
             total_items = len(raw_data)
             
+            method = InterpolationMethod(self.config['interpolation_method'])
+            target_temp = self.config['temperature_of_interest']
+
             for i, data_item in enumerate(raw_data):
                 try:
+                    temperatures = np.array(data_item['temperatures'])
+
+                    # Both quantities are read off at the temperature of interest
                     distance = InterpolationEngine.interpolate(
-                        np.array(data_item['temperatures']),
+                        temperatures,
                         np.array(data_item['distances']),
-                        self.config['temperature_of_interest'],
-                        InterpolationMethod(self.config['interpolation_method'])
+                        target_temp,
+                        method
                     )
-                    
+
+                    concentration = InterpolationEngine.interpolate(
+                        temperatures,
+                        np.array(data_item['concentrations']),
+                        target_temp,
+                        method
+                    )
+
                     if distance is not None:
                         result = AnalysisResult(
                             subsection=data_item['equipment_item'],
                             scenario=data_item['scenario'],
                             weather=data_item['weather'],
-                            downwind_distance=distance,
                             interpolation_method=self.config['interpolation_method'],
-                            temperature_of_interest=self.config['temperature_of_interest']
+                            temperature_of_interest=target_temp,
+                            downwind_distance=distance,
+                            concentration=concentration
                         )
                         results.append(result)
-                    
+
                     progress = int((i + 1) / total_items * 100)
                     self.progress_updated.emit(progress)
-                    
+
                 except Exception as e:
                     logging.error(f"Error processing data item: {e}")
                     continue

@@ -106,7 +106,7 @@ class PHASTAnalyzerGUI(QMainWindow):
         self.temp_interest_spin.setValue(-15)
         self.temp_interest_spin.setDecimals(2)
         params_layout.addWidget(self.temp_interest_spin, 1, 1)
-        
+
         # Interpolation method
         params_layout.addWidget(QLabel("Interpolation Method:"), 2, 0)
         self.interp_method_combo = QComboBox()
@@ -241,14 +241,21 @@ class PHASTAnalyzerGUI(QMainWindow):
             raise ValueError("No results to export")
         
         # Convert results to DataFrame
+        decimals = self.decimal_places_spin.value()
+
+        def rounded(value):
+            return round(value, decimals) if value is not None else None
+
         data = []
         for result in results:
             data.append({
                 'Subsection': result.subsection,
                 'Scenario': result.scenario,
                 'Weather': result.weather,
-                f'Downwind Distance at {result.temperature_of_interest}°C (m)': 
-                    round(result.downwind_distance, self.decimal_places_spin.value()),
+                f'Downwind Distance at {result.temperature_of_interest}°C (m)':
+                    rounded(result.downwind_distance),
+                f'Concentration at {result.temperature_of_interest}°C (ppm)':
+                    rounded(result.concentration),
                 'Interpolation Method': result.interpolation_method
             })
         
