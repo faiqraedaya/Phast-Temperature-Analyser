@@ -22,7 +22,7 @@ cd Phast-Temperature-Analyser
 uv sync
 ```
 
-## Quick start
+## Usage
 
 1. Run the application 
 ```bash
