@@ -3,7 +3,9 @@ import numpy as np
 from typing import Dict, Any, List
 from PySide6.QtCore import QThread, Signal
 
-from phast_temperature_analyser.core.types import TemperatureType, InterpolationMethod, AnalysisResult
+from phast_temperature_analyser.core.types import (
+    TemperatureType, InterpolationMethod, AnalysisResult, TemperatureReading
+)
 from phast_temperature_analyser.core.excel_processor import ExcelProcessor
 from phast_temperature_analyser.core.interpolation import InterpolationEngine
 
@@ -41,38 +43,44 @@ class AnalysisWorker(QThread):
             total_items = len(raw_data)
             
             method = InterpolationMethod(self.config['interpolation_method'])
-            target_temp = self.config['temperature_of_interest']
+            # Normalise the requested temperatures: de-duplicate and sort ascending
+            target_temps = sorted(set(self.config['temperatures_of_interest']))
+            analyse_distance = self.config['analyse_distance']
+            analyse_concentration = self.config['analyse_concentration']
 
             for i, data_item in enumerate(raw_data):
                 try:
                     temperatures = np.array(data_item['temperatures'])
+                    distances = np.array(data_item['distances'])
+                    concentrations = np.array(data_item['concentrations'])
 
-                    # Both quantities are read off at the temperature of interest
-                    distance = InterpolationEngine.interpolate(
-                        temperatures,
-                        np.array(data_item['distances']),
-                        target_temp,
-                        method
-                    )
+                    readings = []
+                    for target_temp in target_temps:
+                        # Each enabled quantity is read off at the temperature of interest
+                        distance = InterpolationEngine.interpolate(
+                            temperatures, distances, target_temp, method
+                        ) if analyse_distance else None
 
-                    concentration = InterpolationEngine.interpolate(
-                        temperatures,
-                        np.array(data_item['concentrations']),
-                        target_temp,
-                        method
-                    )
+                        concentration = InterpolationEngine.interpolate(
+                            temperatures, concentrations, target_temp, method
+                        ) if analyse_concentration else None
 
-                    if distance is not None:
-                        result = AnalysisResult(
+                        readings.append(TemperatureReading(
+                            temperature_of_interest=target_temp,
+                            downwind_distance=distance,
+                            concentration=concentration
+                        ))
+
+                    # Keep the item only if at least one reading produced a value
+                    if any(r.downwind_distance is not None or r.concentration is not None
+                           for r in readings):
+                        results.append(AnalysisResult(
                             subsection=data_item['equipment_item'],
                             scenario=data_item['scenario'],
                             weather=data_item['weather'],
                             interpolation_method=self.config['interpolation_method'],
-                            temperature_of_interest=target_temp,
-                            downwind_distance=distance,
-                            concentration=concentration
-                        )
-                        results.append(result)
+                            readings=readings
+                        ))
 
                     progress = int((i + 1) / total_items * 100)
                     self.progress_updated.emit(progress)

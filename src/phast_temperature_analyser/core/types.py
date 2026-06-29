@@ -1,6 +1,6 @@
 from enum import Enum
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import Optional, List
 
 
 class InterpolationMethod(Enum):
@@ -16,12 +16,18 @@ class TemperatureType(Enum):
 
 
 @dataclass
+class TemperatureReading:
+    """Quantities derived at a single temperature of interest."""
+    temperature_of_interest: float
+    downwind_distance: Optional[float] = None
+    concentration: Optional[float] = None
+
+
+@dataclass
 class AnalysisResult:
     subsection: str
     scenario: str
     weather: str
     interpolation_method: str
-    temperature_of_interest: float
-    # Both derived at the temperature of interest
-    downwind_distance: Optional[float]
-    concentration: Optional[float] 
+    # One reading per requested temperature of interest
+    readings: List[TemperatureReading] = field(default_factory=list) 

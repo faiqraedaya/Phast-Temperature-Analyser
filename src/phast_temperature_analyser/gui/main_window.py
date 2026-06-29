@@ -1,26 +1,27 @@
 import os
 import logging
-import pandas as pd
 from typing import List
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QGridLayout, QLabel, QLineEdit, QPushButton, QComboBox, QCheckBox,
     QProgressBar, QTextEdit, QFileDialog, QMessageBox, QGroupBox,
-    QSpinBox, QDoubleSpinBox, QTabWidget
+    QSpinBox, QDoubleSpinBox, QTabWidget, QTableWidget, QHeaderView,
+    QAbstractItemView
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 
 from phast_temperature_analyser.core.types import TemperatureType, InterpolationMethod, AnalysisResult
 from phast_temperature_analyser.core.worker import AnalysisWorker
+from phast_temperature_analyser.core.exporter import ResultsExporter
 
 
-class PHASTAnalyzerGUI(QMainWindow):
-    """Main GUI application for PHAST dispersion analysis."""
+class MainWindow(QMainWindow):
+    """Main GUI application for PHAST temperature analysis."""
     
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("PHAST Temperature Dispersion Analyser")
+        self.setWindowTitle("PHAST Temperature Analyser")
         self.setGeometry(100, 100, 800, 600)
         
         # Setup logging
@@ -98,23 +99,35 @@ class PHASTAnalyzerGUI(QMainWindow):
         self.temp_type_combo = QComboBox()
         self.temp_type_combo.addItems([t.value for t in TemperatureType])
         params_layout.addWidget(self.temp_type_combo, 0, 1)
-        
-        # Temperature of interest
-        params_layout.addWidget(QLabel("Temperature of Interest (°C):"), 1, 0)
-        self.temp_interest_spin = QDoubleSpinBox()
-        self.temp_interest_spin.setRange(-273, 1000)
-        self.temp_interest_spin.setValue(-15)
-        self.temp_interest_spin.setDecimals(2)
-        params_layout.addWidget(self.temp_interest_spin, 1, 1)
 
-        # Interpolation method
-        params_layout.addWidget(QLabel("Interpolation Method:"), 2, 0)
-        self.interp_method_combo = QComboBox()
-        self.interp_method_combo.addItems([m.value for m in InterpolationMethod])
-        params_layout.addWidget(self.interp_method_combo, 2, 1)
-        
         layout.addWidget(params_group)
-        
+
+        # Temperatures of interest (editable table, one value per row)
+        temp_group = QGroupBox("Temperatures of Interest (°C)")
+        temp_layout = QVBoxLayout(temp_group)
+
+        self.temp_table = QTableWidget(0, 1)
+        self.temp_table.setHorizontalHeaderLabels(["Temperature (°C)"])
+        self.temp_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        self.temp_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.temp_table.setMaximumHeight(180)
+        temp_layout.addWidget(self.temp_table)
+
+        temp_buttons = QHBoxLayout()
+        add_temp_btn = QPushButton("Add")
+        add_temp_btn.clicked.connect(lambda: self.add_temperature_row())
+        temp_buttons.addWidget(add_temp_btn)
+        remove_temp_btn = QPushButton("Remove Selected")
+        remove_temp_btn.clicked.connect(self.remove_temperature_rows)
+        temp_buttons.addWidget(remove_temp_btn)
+        temp_buttons.addStretch()
+        temp_layout.addLayout(temp_buttons)
+
+        layout.addWidget(temp_group)
+
+        # Seed with a sensible default row
+        self.add_temperature_row(-15.0)
+
         # Run button
         self.run_button = QPushButton("Run Analysis")
         self.run_button.clicked.connect(self.run_analysis)
@@ -130,22 +143,69 @@ class PHASTAnalyzerGUI(QMainWindow):
 
         settings_group = QGroupBox("General Settings")
         settings_layout = QVBoxLayout(settings_group)
-        
+
         self.verbose_checkbox = QCheckBox("Verbose Mode")
         self.verbose_checkbox.setChecked(True)
         settings_layout.addWidget(self.verbose_checkbox)
-        
+
         settings_layout.addWidget(QLabel("Decimal Places:"))
         self.decimal_places_spin = QSpinBox()
         self.decimal_places_spin.setRange(0, 10)
         self.decimal_places_spin.setValue(2)
         settings_layout.addWidget(self.decimal_places_spin)
-        
+
+        settings_layout.addWidget(QLabel("Interpolation Method:"))
+        self.interp_method_combo = QComboBox()
+        self.interp_method_combo.addItems([m.value for m in InterpolationMethod])
+        settings_layout.addWidget(self.interp_method_combo)
+
         layout.addWidget(settings_group)
+
+        # Quantities to analyse at each temperature of interest
+        analyse_group = QGroupBox("Quantities to Analyse")
+        analyse_layout = QVBoxLayout(analyse_group)
+
+        self.analyse_distance_checkbox = QCheckBox("Downwind Distance")
+        self.analyse_distance_checkbox.setChecked(True)
+        analyse_layout.addWidget(self.analyse_distance_checkbox)
+
+        self.analyse_concentration_checkbox = QCheckBox("Concentration")
+        self.analyse_concentration_checkbox.setChecked(True)
+        analyse_layout.addWidget(self.analyse_concentration_checkbox)
+
+        layout.addWidget(analyse_group)
+
         # Add stretch to push everything to top
         layout.addStretch()
-        
+
         return tab
+
+    def add_temperature_row(self, value: float = -15.0):
+        """Append a new temperature row backed by a numeric spin box."""
+        row = self.temp_table.rowCount()
+        self.temp_table.insertRow(row)
+        spin = QDoubleSpinBox()
+        spin.setRange(-273, 1000)
+        spin.setDecimals(2)
+        spin.setValue(value)
+        self.temp_table.setCellWidget(row, 0, spin)
+        self.temp_table.setCurrentCell(row, 0)
+
+    def remove_temperature_rows(self):
+        """Remove the selected rows, or the last row if none are selected."""
+        selected_rows = {index.row() for index in self.temp_table.selectionModel().selectedRows()}
+        if not selected_rows and self.temp_table.rowCount() > 0:
+            selected_rows = {self.temp_table.rowCount() - 1}
+        for row in sorted(selected_rows, reverse=True):
+            self.temp_table.removeRow(row)
+
+    def collect_temperatures(self) -> List[float]:
+        """Read the temperature values currently entered in the table."""
+        return [
+            self.temp_table.cellWidget(row, 0).value()
+            for row in range(self.temp_table.rowCount())
+            if self.temp_table.cellWidget(row, 0) is not None
+        ]
     
     def browse_input_folder(self):
         """Browse for input folder."""
@@ -173,14 +233,30 @@ class PHASTAnalyzerGUI(QMainWindow):
         if not os.path.exists(self.input_folder_edit.text()):
             QMessageBox.warning(self, "Warning", "Input folder does not exist.")
             return
-        
+
+        temperatures_of_interest = self.collect_temperatures()
+        if not temperatures_of_interest:
+            QMessageBox.warning(self, "Warning", "Please add at least one temperature of interest.")
+            return
+
+        analyse_distance = self.analyse_distance_checkbox.isChecked()
+        analyse_concentration = self.analyse_concentration_checkbox.isChecked()
+        if not analyse_distance and not analyse_concentration:
+            QMessageBox.warning(
+                self, "Warning",
+                "Enable at least one quantity to analyse (distance or concentration)."
+            )
+            return
+
         # Prepare configuration
         config = {
             'input_folder': self.input_folder_edit.text(),
             'output_file': self.output_file_edit.text(),
             'temperature_type': self.temp_type_combo.currentText(),
-            'temperature_of_interest': self.temp_interest_spin.value(),
+            'temperatures_of_interest': temperatures_of_interest,
             'interpolation_method': self.interp_method_combo.currentText(),
+            'analyse_distance': analyse_distance,
+            'analyse_concentration': analyse_concentration,
             'verbose': self.verbose_checkbox.isChecked(),
             'decimal_places': self.decimal_places_spin.value()
         }
@@ -236,45 +312,10 @@ class PHASTAnalyzerGUI(QMainWindow):
         QMessageBox.critical(self, "Error", f"Analysis failed:\n{error_message}")
     
     def export_results(self, results: List[AnalysisResult]):
-        """Export results to Excel file."""
-        if not results:
-            raise ValueError("No results to export")
-        
-        # Convert results to DataFrame
-        decimals = self.decimal_places_spin.value()
-
-        def rounded(value):
-            return round(value, decimals) if value is not None else None
-
-        data = []
-        for result in results:
-            data.append({
-                'Subsection': result.subsection,
-                'Scenario': result.scenario,
-                'Weather': result.weather,
-                f'Downwind Distance at {result.temperature_of_interest}°C (m)':
-                    rounded(result.downwind_distance),
-                f'Concentration at {result.temperature_of_interest}°C (ppm)':
-                    rounded(result.concentration),
-                'Interpolation Method': result.interpolation_method
-            })
-        
-        df = pd.DataFrame(data)
-        
-        # Export to Excel
-        with pd.ExcelWriter(self.output_file_edit.text(), engine='openpyxl') as writer:
-            df.to_excel(writer, sheet_name='Analysis Results', index=False)
-            
-            # Auto-adjust column widths
-            worksheet = writer.sheets['Analysis Results']
-            for column in worksheet.columns:
-                max_length = 0
-                column_letter = column[0].column_letter
-                for cell in column:
-                    try:
-                        if len(str(cell.value)) > max_length:
-                            max_length = len(str(cell.value))
-                    except:
-                        pass
-                adjusted_width = min(max_length + 2, 50)
-                worksheet.column_dimensions[column_letter].width = adjusted_width 
+        """Hand the results to the core exporter using the current settings."""
+        exporter = ResultsExporter(
+            decimal_places=self.decimal_places_spin.value(),
+            include_distance=self.analyse_distance_checkbox.isChecked(),
+            include_concentration=self.analyse_concentration_checkbox.isChecked(),
+        )
+        exporter.export(results, self.output_file_edit.text())
