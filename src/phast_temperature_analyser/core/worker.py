@@ -90,6 +90,7 @@ class AnalysisWorker(QThread):
                     continue
             
             self.analysis_completed.emit(results)
+            self.status_updated.emit("Analysis completed successfully.")
             
         except Exception as e:
             self.error_occurred.emit(str(e)) 

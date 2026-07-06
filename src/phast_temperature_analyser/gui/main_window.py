@@ -8,12 +8,33 @@ from PySide6.QtWidgets import (
     QSpinBox, QDoubleSpinBox, QTabWidget, QTableWidget, QHeaderView,
     QAbstractItemView
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QObject, Signal
 from PySide6.QtGui import QFont
 
 from phast_temperature_analyser.core.types import TemperatureType, InterpolationMethod, AnalysisResult
 from phast_temperature_analyser.core.worker import AnalysisWorker
 from phast_temperature_analyser.core.exporter import ResultsExporter
+
+
+class QtLogHandler(QObject, logging.Handler):
+    """Logging handler that forwards records to the GUI via a Qt signal.
+
+    Emitting a signal (rather than touching widgets directly) makes this safe
+    to call from the worker thread: the queued connection marshals the append
+    onto the GUI thread, so the log updates live during analysis.
+    """
+
+    message_logged = Signal(str)
+
+    def __init__(self):
+        QObject.__init__(self)
+        logging.Handler.__init__(self)
+
+    def emit(self, record):
+        try:
+            self.message_logged.emit(self.format(record))
+        except Exception:
+            self.handleError(record)
 
 
 class MainWindow(QMainWindow):
@@ -24,11 +45,10 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("PHAST Temperature Analyser")
         self.setGeometry(100, 100, 800, 600)
         
-        # Setup logging
-        logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
-        
+
         self.init_ui()
+        self.setup_logging()
         
     def init_ui(self):
         """Initialize the user interface."""
@@ -62,7 +82,18 @@ class MainWindow(QMainWindow):
         self.log_output.setMaximumHeight(150)
         self.log_output.setFont(QFont("Consolas", 9))
         layout.addWidget(self.log_output)
-        
+
+    def setup_logging(self):
+        """Route application logging into the in-app log panel (not the console)."""
+        handler = QtLogHandler()
+        handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
+        handler.message_logged.connect(self.log_output.append)
+
+        root_logger = logging.getLogger()
+        root_logger.setLevel(logging.INFO)
+        root_logger.addHandler(handler)
+        self.log_handler = handler
+
     def create_analysis_tab(self) -> QWidget:
         """Create the main analysis tab."""
         tab = QWidget()
@@ -212,11 +243,19 @@ class MainWindow(QMainWindow):
         folder = QFileDialog.getExistingDirectory(self, "Select Input Folder")
         if folder:
             self.input_folder_edit.setText(folder)
-    
+            # Default the output to Output.xlsx in the input folder, unless the
+            # user has already chosen an output file themselves.
+            if not self.output_file_edit.text().strip():
+                self.output_file_edit.setText(os.path.join(folder, "Output.xlsx"))
+
     def browse_output_file(self):
         """Browse for output file."""
+        default_path = self.output_file_edit.text().strip()
+        if not default_path:
+            input_folder = self.input_folder_edit.text().strip()
+            default_path = os.path.join(input_folder, "Output.xlsx") if input_folder else ""
         file_path, _ = QFileDialog.getSaveFileName(
-            self, "Save Output File", "", "Excel Files (*.xlsx);;All Files (*)"
+            self, "Save Output File", default_path, "Excel Files (*.xlsx);;All Files (*)"
         )
         if file_path:
             if not file_path.endswith('.xlsx'):

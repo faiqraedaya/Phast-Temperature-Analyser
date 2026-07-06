@@ -43,11 +43,15 @@ class ResultsExporter:
                 'Scenario': result.scenario,
                 'Weather': result.weather,
             }
-            for reading in result.readings:
-                temp = f"{reading.temperature_of_interest:g}"
-                if self.include_distance:
+            # Group all distances first, then all concentrations, so columns read
+            # Distance@T1..Tx, then Conc@T1..Tx (rather than interleaved per temp).
+            if self.include_distance:
+                for reading in result.readings:
+                    temp = f"{reading.temperature_of_interest:g}"
                     row[f'Downwind Distance at {temp}°C (m)'] = self._round(reading.downwind_distance)
-                if self.include_concentration:
+            if self.include_concentration:
+                for reading in result.readings:
+                    temp = f"{reading.temperature_of_interest:g}"
                     row[f'Concentration at {temp}°C (ppm)'] = self._round(reading.concentration)
             row['Interpolation Method'] = result.interpolation_method
             rows.append(row)
