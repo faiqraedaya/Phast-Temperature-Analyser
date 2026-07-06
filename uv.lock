@@ -11,33 +11,6 @@ resolution-markers = [
 ]
 
 [[package]]
-name = "2405p-phast-temperature-analyser"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "openpyxl" },
-    { name = "pandas" },
-    { name = "pyside6" },
-    { name = "scipy" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "pyinstaller" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "openpyxl", specifier = ">=3.1.5" },
-    { name = "pandas", specifier = ">=3.0.3" },
-    { name = "pyside6", specifier = ">=6.11.1" },
-    { name = "scipy", specifier = ">=1.17.1" },
-]
-
-[package.metadata.requires-dev]
-dev = [{ name = "pyinstaller", specifier = ">=6.11" }]
-
-[[package]]
 name = "altgraph"
 version = "0.17.5"
 source = { registry = "https://pypi.org/simple" }
@@ -190,6 +163,33 @@ sdist = { url = "https://files.pythonhosted.org/packages/03/4f/2750f7f6f025a1507
 wheels = [
     { url = "https://files.pythonhosted.org/packages/54/16/12b82f791c7f50ddec566873d5bdd245baa1491bac11d15ffb98aecc8f8b/pefile-2024.8.26-py3-none-any.whl", hash = "sha256:76f8b485dcd3b1bb8166f1128d395fa3d87af26360c2358fb75b80019b957c6f", size = 74766, upload-time = "2024-08-26T21:01:02.632Z" },
 ]
+
+[[package]]
+name = "phast-temperature-analyser"
+version = "1.3.0"
+source = { editable = "." }
+dependencies = [
+    { name = "openpyxl" },
+    { name = "pandas" },
+    { name = "pyside6" },
+    { name = "scipy" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pyinstaller" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "openpyxl", specifier = ">=3.1.5" },
+    { name = "pandas", specifier = ">=3.0.3" },
+    { name = "pyside6", specifier = ">=6.11.1" },
+    { name = "scipy", specifier = ">=1.17.1" },
+]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pyinstaller", specifier = ">=6.11" }]
 
 [[package]]
 name = "pyinstaller"

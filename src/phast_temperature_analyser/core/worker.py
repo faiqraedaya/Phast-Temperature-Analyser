@@ -32,7 +32,15 @@ class AnalysisWorker(QThread):
             )
             
             self.status_updated.emit("Processing Excel files...")
-            raw_data = processor.process_files(self.config['input_folder'])
+
+            # Parsing is the slow phase, so it drives the first 90% of the bar.
+            def on_parse_progress(files_done: int, total_files: int):
+                if total_files:
+                    self.progress_updated.emit(int(files_done / total_files * 90))
+
+            raw_data = processor.process_files(
+                self.config['input_folder'], progress_callback=on_parse_progress
+            )
             
             if not raw_data:
                 self.error_occurred.emit("No valid data found in Excel files")
@@ -82,7 +90,8 @@ class AnalysisWorker(QThread):
                             readings=readings
                         ))
 
-                    progress = int((i + 1) / total_items * 100)
+                    # Interpolation fills the remaining 90 -> 100% of the bar.
+                    progress = 90 + int((i + 1) / total_items * 10)
                     self.progress_updated.emit(progress)
 
                 except Exception as e:

@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import List, Dict, Any, Iterable, Optional, Tuple
+from typing import List, Dict, Any, Callable, Iterable, Optional, Tuple
 import openpyxl
 
 from phast_temperature_analyser.core.types import TemperatureType
@@ -23,17 +23,28 @@ class ExcelProcessor:
             else "C/Line liquid temperature [degC]"
         )
 
-    def process_files(self, folder_path: str) -> List[Dict[str, Any]]:
-        """Process all Excel files in the given folder."""
+    def process_files(
+        self,
+        folder_path: str,
+        progress_callback: Optional[Callable[[int, int], None]] = None,
+    ) -> List[Dict[str, Any]]:
+        """Process all Excel files in the given folder.
+
+        ``progress_callback`` is invoked as ``(files_done, total_files)`` after
+        each file so callers can report parse-phase progress.
+        """
         excel_files = list(Path(folder_path).glob("*.xlsx"))
+        total = len(excel_files)
         all_data = []
 
-        for file_path in excel_files:
+        for index, file_path in enumerate(excel_files):
             try:
                 file_data = self._process_single_file(file_path)
                 all_data.extend(file_data)
             except Exception as e:
                 self.logger.error(f"Error processing {file_path}: {e}")
+            if progress_callback:
+                progress_callback(index + 1, total)
 
         return all_data
 

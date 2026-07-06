@@ -326,20 +326,28 @@ class MainWindow(QMainWindow):
         """Handle analysis completion."""
         try:
             self.export_results(results)
-            
+
             self.progress_bar.setVisible(False)
             self.run_button.setEnabled(True)
-            
+
             QMessageBox.information(
-                self, "Success", 
+                self, "Success",
                 f"Analysis completed successfully!\n"
                 f"Results exported to: {self.output_file_edit.text()}\n"
                 f"Total records: {len(results)}"
             )
             self.log_output.append(f"[INFO] Analysis completed successfully. Results exported to: {self.output_file_edit.text()}")
+            self.open_output_file(self.output_file_edit.text())
             
         except Exception as e:
             self.on_error(f"Export failed: {str(e)}")
+
+    def open_output_file(self, file_path: str):
+        """Attempt to open the output file in the default application."""
+        try:
+            os.startfile(file_path)
+        except Exception as e:
+            self.log_output.append(f"[WARNING] Could not open output file: {str(e)}")
     
     def on_error(self, error_message: str):
         """Handle analysis errors."""
