@@ -13,9 +13,8 @@ CONCENTRATION_HEADER = "C/Line conc [ppm]"
 class ExcelProcessor:
     """Handles Excel file processing and data extraction."""
 
-    def __init__(self, temperature_type: TemperatureType, verbose: bool = False):
+    def __init__(self, temperature_type: TemperatureType):
         self.temperature_type = temperature_type
-        self.verbose = verbose
         self.logger = logging.getLogger(__name__)
         self.temp_header = (
             "C/Line vapour temperature [degC]"
@@ -33,7 +32,12 @@ class ExcelProcessor:
         ``progress_callback`` is invoked as ``(files_done, total_files)`` after
         each file so callers can report parse-phase progress.
         """
-        excel_files = list(Path(folder_path).glob("*.xlsx"))
+        # Skip Excel's owner-lock files (~$Report.xlsx), which appear while a
+        # report is open and are not readable reports themselves.
+        excel_files = [
+            path for path in Path(folder_path).glob("*.xlsx")
+            if not path.name.startswith("~$")
+        ]
         total = len(excel_files)
         all_data = []
 
@@ -55,8 +59,7 @@ class ExcelProcessor:
         wb = openpyxl.load_workbook(file_path, data_only=True, read_only=True)
         file_data = []
 
-        if self.verbose:
-            self.logger.info(f"Processing file: {file_path}")
+        self.logger.info(f"Processing file: {file_path}")
 
         try:
             for ws in wb.worksheets:
@@ -87,15 +90,30 @@ class ExcelProcessor:
         concentrations: List[Optional[float]] = []
 
         def flush():
-            if distances and temperatures and equipment_item and scenario and weather:
-                sheet_data.append({
-                    "equipment_item": equipment_item,
-                    "scenario": scenario,
-                    "weather": weather,
-                    "distances": list(distances),
-                    "concentrations": list(concentrations),
-                    "temperatures": list(temperatures),
+            if not (distances and temperatures and equipment_item and scenario and weather):
+                return
+            profiles = []
+            for start, end in ExcelProcessor._observer_spans(distances):
+                if end - start < 2:
+                    continue  # a lone point cannot carry a crossing
+                profiles.append({
+                    "distances": distances[start:end],
+                    "concentrations": concentrations[start:end],
+                    "temperatures": temperatures[start:end],
                 })
+            if not profiles:
+                return
+            if len(profiles) > 1:
+                self.logger.info(
+                    f"{equipment_item} | {scenario} | {weather}: dispersion table "
+                    f"holds {len(profiles)} observer profiles"
+                )
+            sheet_data.append({
+                "equipment_item": equipment_item,
+                "scenario": scenario,
+                "weather": weather,
+                "profiles": profiles,
+            })
 
         for values in rows:
             if not values:
@@ -119,17 +137,23 @@ class ExcelProcessor:
                 header_countdown -= 1
                 if header_countdown == 0:
                     headers = list(values)
-                    try:
-                        distance_col = (
-                            headers.index(DISTANCE_HEADER)
-                            if DISTANCE_HEADER in headers else None
+                    distance_col = (
+                        headers.index(DISTANCE_HEADER)
+                        if DISTANCE_HEADER in headers else None
+                    )
+                    temp_col = (
+                        headers.index(self.temp_header)
+                        if self.temp_header in headers else None
+                    )
+                    if distance_col is None or temp_col is None:
+                        # This table lacks a column the analysis needs — most
+                        # often a liquid temperature the report does not carry.
+                        # Abandon it and keep scanning; other tables in the same
+                        # file may still be usable.
+                        self.logger.info(
+                            f"Skipping a dispersion table without a "
+                            f"'{DISTANCE_HEADER}' and '{self.temp_header}' column"
                         )
-                        temp_col = (
-                            headers.index(self.temp_header)
-                            if self.temp_header in headers else None
-                        )
-                    except ValueError:
-                        # Header row not shaped as expected; abandon this table.
                         state = "search"
                         continue
                     # Concentration is optional: not every report contains it.
@@ -162,6 +186,32 @@ class ExcelProcessor:
             flush()
 
         return sheet_data
+
+    @staticmethod
+    def _observer_spans(distances: List[float]) -> List[Tuple[int, int]]:
+        """Split one dispersion table into a span per observer.
+
+        A time-varying release is reported as several observers — parcels
+        leaving the source at different times — whose profiles are
+        concatenated into a single table with no separator row and no observer
+        column. Each one restarts at the source, so a downwind distance that
+        steps backwards marks where the next observer begins; along any one
+        cloud the distance only ever advances.
+
+        Left joined, that seam reads as a single segment running tens of
+        kilometres upwind across the cloud's whole temperature range, and it
+        straddles almost any temperature of interest. The crossing read off it
+        is fictitious and, being far the furthest downwind, wins the worst case
+        outright.
+
+        Returns half-open (start, end) index pairs.
+        """
+        boundaries = [0]
+        boundaries.extend(
+            i for i in range(1, len(distances)) if distances[i] < distances[i - 1]
+        )
+        boundaries.append(len(distances))
+        return [(boundaries[k], boundaries[k + 1]) for k in range(len(boundaries) - 1)]
 
     @staticmethod
     def _append_point(values, distance_col, temp_col, concentration_col,

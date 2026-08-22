@@ -1,7 +1,7 @@
 [project]
 name = "phast-temperature-analyser"
 version = "1.3.0"
-description = "Add your description here"
+description = "Analyses temperature and concentration data from Phast dispersion reports."
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [

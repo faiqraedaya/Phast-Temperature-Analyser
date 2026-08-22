@@ -20,10 +20,14 @@ class ResultsExporter:
         decimal_places: int = 2,
         include_distance: bool = True,
         include_concentration: bool = True,
+        concentration_basis: Optional[str] = None,
+        include_minimum_temperature: bool = False,
     ):
         self.decimal_places = decimal_places
         self.include_distance = include_distance
         self.include_concentration = include_concentration
+        self.concentration_basis = concentration_basis
+        self.include_minimum_temperature = include_minimum_temperature
         self.logger = logging.getLogger(__name__)
 
     def export(self, results: List[AnalysisResult], output_file: str) -> None:
@@ -43,6 +47,12 @@ class ResultsExporter:
                 'Scenario': result.scenario,
                 'Weather': result.weather,
             }
+            # A property of the cloud, not of any temperature of interest,
+            # so it sits with the identifying columns rather than the
+            # per-temperature ones.
+            if self.include_minimum_temperature:
+                row['Minimum Temperature (°C)'] = self._round(
+                    result.minimum_temperature)
             # Group all distances first, then all concentrations, so columns read
             # Distance@T1..Tx, then Conc@T1..Tx (rather than interleaved per temp).
             if self.include_distance:
@@ -53,6 +63,10 @@ class ResultsExporter:
                 for reading in result.readings:
                     temp = f"{reading.temperature_of_interest:g}"
                     row[f'Concentration at {temp}°C (ppm)'] = self._round(reading.concentration)
+            # Record which concentration the numbers are, so the basis
+            # travels with them rather than living only in the settings.
+            if self.include_concentration and self.concentration_basis:
+                row['Concentration Basis'] = self.concentration_basis
             row['Interpolation Method'] = result.interpolation_method
             rows.append(row)
 
